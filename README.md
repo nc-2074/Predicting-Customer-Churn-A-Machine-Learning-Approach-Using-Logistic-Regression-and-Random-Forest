@@ -10,6 +10,7 @@ The analysis compares two machine learning models:
 
 ## 📁 Repository Structure
 
+undefined
 Telco-Customer-Churn-Prediction/
 │
 ├── Data/
@@ -23,6 +24,7 @@ Telco-Customer-Churn-Prediction/
 │   └── Predicting_Customer_Churn.pdf # Final report with analysis, visualizations, and conclusions
 │
 └── README.md                         # This file
+undefined
 
 ## 🎯 Key Objectives
 
