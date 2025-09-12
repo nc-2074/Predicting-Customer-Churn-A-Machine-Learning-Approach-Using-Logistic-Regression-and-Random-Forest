@@ -78,7 +78,7 @@ The analysis revealed that the most significant drivers of churn are:
 
 | Model                    | Accuracy | Sensitivity (Recall) | Precision | AUC  |
 |---------------------------|----------|----------------------|-----------|------|
-| LASSO Logistic Regression | 0.74     | 0.79                 | 0.51      | -    |
+| LASSO Logistic Regression | 0.74     | 0.79                 | 0.51      | 0.819|
 | Random Forest             | 0.69     | 0.86                 | 0.45      | 0.82 |
 
 - **Random Forest** is recommended for *proactive identification* of likely churners due to its higher recall.  
