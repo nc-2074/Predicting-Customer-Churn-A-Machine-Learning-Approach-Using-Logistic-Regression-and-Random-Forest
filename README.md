@@ -2,27 +2,27 @@
 
 ## 📖 Project Overview
 
-This project aims to predict customer churn for a telecom company (Telco) using machine learning. Customer churn is a critical business problem, as acquiring new customers is far more expensive than retaining existing ones. By analyzing customer data, this project identifies key factors influencing churn and builds predictive models to flag at-risk customers, enabling proactive retention strategies.
+This project was made with the goal of predicting customer churn for a telecom company (Telco) using machine learning. Customer churn is a critical business problem, because getting new customers is more expensive than retaining existing ones. By analyzing customer data, this project identifies key factors influencing churn and builds predictive models to flag at-risk customers, which can be used to inform proactive retention strategies.
 
 The analysis compares two machine learning models:
-1.  **LASSO Logistic Regression** (for interpretability and identifying key drivers).
-2.  **Random Forest** (for high predictive performance and capturing complex patterns).
+1.  **LASSO Logistic Regression** 
+2.  **Random Forest** 
 
 ## 📁 Repository Structure
 
 Telco-Customer-Churn-Prediction/
 │
 ├── Data/
-│ └── telco_churn_data.csv # Raw dataset (from Kaggle)
+│   └── telco_churn_data.csv          # Raw dataset (from Kaggle)
 │
 ├── Code/
-│ ├── Telco_Churn_Analysis.R # Main R script for data cleaning, EDA, and modeling
-│ └── Telco_Churn_Analysis.Rmd # R Markdown file for generating the report with visualizations
+│   ├── Telco_Churn_Analysis.R        # Main R script for data cleaning, EDA, and modeling
+│   └── Telco_Churn_Analysis.Rmd      # R Markdown file for generating the report with visualizations
 │
 ├── Output/
-│ ├── Predicting_Customer_Churn.pdf # Final report with full analysis, visualizations, and conclusions
+│   ├── Predicting_Customer_Churn.pdf # Final report with full analysis, visualizations, and conclusions
 │
-└── README.md # This file
+└── README.md                         # This file
 
 
 ## 🎯 Key Objectives
