@@ -20,10 +20,9 @@ Telco-Customer-Churn-Prediction/
 │   └── Telco_Churn_Analysis.Rmd      # R Markdown file for generating the report with visualizations
 │
 ├── Output/
-│   ├── Predicting_Customer_Churn.pdf # Final report with full analysis, visualizations, and conclusions
+│   └── Predicting_Customer_Churn.pdf # Final report with analysis, visualizations, and conclusions
 │
 └── README.md                         # This file
-
 
 ## 🎯 Key Objectives
 
