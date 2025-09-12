@@ -1,0 +1,1024 @@
+---
+title: "Telco Predicting Customer Churn"
+author: "Nicole"
+date: "2025-08-23"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+setwd("/Users/nicolefreijcamacho/Downloads/Project 1")
+
+telco_chrun <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv.xls")
+
+```
+
+```{r}
+library("dplyr")
+library(ggplot2)
+library(dplyr)
+library(scales) 
+library(patchwork)
+library(glmnet)    
+library(caret)     
+library(pROC)      
+library(ROSE) 
+library(randomForest)
+library(car) 
+
+```
+
+```{r}
+head(telco_chrun)
+```
+
+#Understanding the nature of the variables (appropiate data types)
+
+```{r}
+summary(telco_chrun)
+
+```
+
+```{r}
+telco_chrun$gender <- as.factor(telco_chrun$gender)
+telco_chrun$SeniorCitizen <- as.factor(telco_chrun$SeniorCitizen)
+telco_chrun$Partner  <- as.factor(telco_chrun$Partner)
+telco_chrun$Dependents  <- as.factor(telco_chrun$Dependents)
+telco_chrun$PhoneService  <- as.factor(telco_chrun$PhoneService)
+telco_chrun$MultipleLines  <- as.factor(telco_chrun$MultipleLines)
+telco_chrun$InternetService  <- as.factor(telco_chrun$InternetService)
+telco_chrun$OnlineSecurity   <- as.factor(telco_chrun$OnlineSecurity)
+telco_chrun$DeviceProtection  <- as.factor(telco_chrun$DeviceProtection)
+telco_chrun$OnlineBackup <- as.factor(telco_chrun$OnlineBackup)
+telco_chrun$TechSupport  <- as.factor(telco_chrun$TechSupport)
+telco_chrun$StreamingTV  <- as.factor(telco_chrun$StreamingTV)
+telco_chrun$StreamingMovies  <- as.factor(telco_chrun$StreamingMovies)
+telco_chrun$Contract  <- as.factor(telco_chrun$Contract)
+telco_chrun$PaperlessBilling  <- as.factor(telco_chrun$PaperlessBilling)
+telco_chrun$PaymentMethod  <- as.factor(telco_chrun$PaymentMethod)
+telco_chrun$Churn  <- as.factor(telco_chrun$Churn)
+
+summary(telco_chrun)
+
+```
+
+```{r}
+telco_chrun_clean <- telco_chrun %>%
+  select(-customerID) %>%
+
+  mutate(MultipleLines = case_when(
+    MultipleLines %in% c("No phone service", "No") ~ "No",
+    TRUE ~ "Yes"
+  )) %>%
+
+  mutate(InternetService = case_when(
+    InternetService == "Fiber optic" ~ "FiberOptic",
+    InternetService == "DSL" ~ "DSL",
+    TRUE ~ "No" # This handles the "No" internet service case
+  )) %>%
+
+  mutate(across(c(OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies),
+                ~ case_when(
+                  . %in% c("No internet service", "No") ~ "No",
+                  TRUE ~ "Yes"
+                ))) %>%
+
+  mutate(PaymentMethod = case_when(
+    PaymentMethod == "Bank transfer (automatic)" ~ "BankTransferAuto",
+    PaymentMethod == "Credit card (automatic)" ~ "CreditCardAuto",
+    PaymentMethod == "Electronic check" ~ "ECheck",
+    TRUE ~ "MailedCheck" # This handles "Mailed check"
+  )) %>%
+
+  mutate(across(where(is.character), as.factor))
+
+summary(telco_chrun_clean)
+```
+
+#Handling NA Values
+```{r}
+telco_chrun_clean <- na.omit(telco_chrun_clean)
+```
+
+```{r}
+dim(telco_chrun_clean)
+```
+
+#Preliminary Relationship With Chrun Plot Function
+
+For variables with yes/no responses
+
+```{r}
+create_churn_plot <- function(variable_name, data = telco_chrun_clean) {
+  
+  plot_data <- data %>%
+    count(Churn, !!sym(variable_name)) %>%
+    group_by(Churn) %>%
+    mutate(percentage = n / sum(n)) %>%
+    ungroup()
+  
+  plot <- ggplot(plot_data, aes(x = factor(!!sym(variable_name)), 
+                     y = percentage, 
+                     fill = factor(!!sym(variable_name)))) +
+    geom_col(color = "black", show.legend = FALSE) +
+    geom_text(aes(label = scales::percent(percentage, accuracy = 0.1)), 
+              vjust = -0.5, size = 4, fontface = "bold") +
+    facet_wrap(~ factor(Churn, levels = c("Yes", "No"), 
+                       labels = c("Churned Customers", "Retained Customers")), 
+               nrow = 1) +
+    scale_y_continuous(labels = scales::percent_format(), 
+                       limits = c(0, 1),
+                       expand = expansion(mult = c(0, 0.1))) +
+    scale_fill_manual(values = c("Yes" = "lightblue", "No" = "lightcoral")) +
+    labs(x = gsub("_", " ", variable_name),
+         y = "Percentage of Group") +
+    theme_minimal() +
+    theme(strip.text = element_text(face = "bold", size = 11))
+  
+  return(list(plot_data = plot_data, plot = plot))
+}
+```
+
+
+#EDA for demographic variables 
+
+```{r}
+Senior_plot_data <- telco_chrun_clean %>%
+  count(Churn, SeniorCitizen) %>%
+  group_by(Churn) %>%  
+  mutate(percentage = n / sum(n)) %>%
+  ungroup()
+
+Senior_plot <- ggplot(Senior_plot_data, aes(x = factor(SeniorCitizen, labels = c("No", "Yes")), 
+                     y = percentage, 
+                     fill = factor(SeniorCitizen, labels = c("No", "Yes")))) +
+  geom_col(color = "black", show.legend = FALSE) +  # Bars with black outline, hide legend
+  geom_text(aes(label = scales::percent(percentage, accuracy = 0.1)), 
+            vjust = -0.5, size = 4, fontface = "bold") + 
+  facet_wrap(~ factor(Churn, levels = c("Yes", "No"), 
+                     labels = c("Churned Customers", "Retained Customers")), 
+             nrow = 1) +  # Put facets in one row, Churned first (left)
+  scale_y_continuous(labels = scales::percent_format(), 
+                     limits = c(0, 1),  # Set y-axis from 0% to 100%
+                     expand = expansion(mult = c(0, 0.1))) +  
+  scale_fill_manual(values = c("Yes" = "lightblue", "No" = "lightcoral")) +  # Light colors
+  labs(
+       x = "Senior Citizen",
+       y = "Percentage of Group") +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold", size = 11))  
+
+Senior_plot
+```
+```{r}
+Gender_plot_data <- telco_chrun_clean %>%
+  count(Churn, gender) %>%
+  group_by(Churn) %>%  
+  mutate(percentage = n / sum(n)) %>%
+  ungroup()
+telco_chrun_clean
+
+Gender_plot <- ggplot(Gender_plot_data, aes(x = factor(gender), 
+                     y = percentage, 
+                     fill = factor(gender))) +
+  geom_col(color = "black", show.legend = FALSE) +  
+  geom_text(aes(label = scales::percent(percentage, accuracy = 0.1)), 
+            vjust = -0.5, size = 4, fontface = "bold") +  
+  facet_wrap(~ factor(Churn, levels = c("Yes", "No"), 
+                     labels = c("Churned Customers", "Retained Customers")), 
+             nrow = 1) + 
+  scale_y_continuous(labels = scales::percent_format(), 
+                     limits = c(0, 1),  
+                     expand = expansion(mult = c(0, 0.1))) +  
+  scale_fill_manual(values = c("Male" = "lightblue", "Female" = "lightcoral")) +  
+  labs(
+       x = "Gender",
+       y = "Percentage of Group") +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold", size = 11))  
+
+Gender_plot
+```
+```{r}
+
+Partner_results <- create_churn_plot("Partner")
+Partner_plot_data <- Partner_results$plot_data
+Partner_plot <- Partner_results$plot
+
+Partner_plot
+```
+```{r}
+Dependents_results <- create_churn_plot("Dependents")
+Dependents_plot_data <- Dependents_results$plot_data
+Dependents_plot <- Dependents_results$plot
+
+Dependents_plot
+```
+##Plot for Report
+```{r}
+combined_analysis_demographics <- (Senior_plot + Gender_plot) / 
+                     (Partner_plot + Dependents_plot)
+
+combined_analysis_demographics + plot_annotation(
+  title = "Customer Demographic Analysis by Churn Status",
+  theme = theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+)
+```
+#EDA for Account Information
+
+```{r}
+avg_tenure <- telco_chrun_clean %>%
+  group_by(Churn) %>%
+  summarise(avg_tenure = mean(tenure))
+
+tenure_density_plot <- ggplot(telco_chrun_clean, aes(x = tenure, fill = Churn)) +
+  geom_density(alpha = 0.6, color = NA) + 
+  geom_vline(data = avg_tenure, 
+             aes(xintercept = avg_tenure, color = Churn), 
+             linetype = "dashed", size = 1, show.legend = FALSE) +  
+  geom_label(data = avg_tenure,
+             aes(x = avg_tenure, y = 0.02, 
+                 label = paste("Avg:", round(avg_tenure, 1), "months"), 
+                 color = Churn),
+             fill = "white", alpha = 0.8, size = 3.5,
+             show.legend = FALSE) +  
+  scale_fill_manual(values = c("No" = "steelblue", "Yes" = "coral2"),
+                    labels = c("No" = "Retained", "Yes" = "Churned")) +
+  scale_color_manual(values = c("No" = "darkblue", "Yes" = "darkred")) +
+  labs(title = "Distribution of Customer Tenure by Churn Status",
+       subtitle = "Dashed lines show average tenure for each group",
+       x = "Tenure (Months)",
+       y = "Density",
+       fill = "Customer Status") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+print(tenure_density_plot)
+
+print(avg_tenure)
+```
+```{r}
+avg_MonthlyCharges <- telco_chrun_clean %>%
+  group_by(Churn) %>%
+  summarise(avg_MonthlyCharges = mean(MonthlyCharges))
+
+MonthlyCharges_density_plot <- ggplot(telco_chrun_clean, aes(x = MonthlyCharges, fill = Churn)) +
+  geom_density(alpha = 0.6, color = NA) +  
+  geom_vline(data = avg_MonthlyCharges, 
+             aes(xintercept = avg_MonthlyCharges, color = Churn), 
+             linetype = "dashed", size = 1, show.legend = FALSE) +  
+  geom_label(data = avg_MonthlyCharges,
+             aes(x = avg_MonthlyCharges, y = 0.02, 
+                 label = paste("Avg: $", round(avg_MonthlyCharges, 1)), 
+                 color = Churn),
+             fill = "white", alpha = 0.8, size = 3.5,
+             show.legend = FALSE) +  
+  scale_fill_manual(values = c("No" = "steelblue", "Yes" = "coral2"),
+                    labels = c("No" = "Retained", "Yes" = "Churned")) +
+  scale_color_manual(values = c("No" = "darkblue", "Yes" = "darkred")) +
+  labs(title = "Distribution of Customer's Monthly Charges by Churn Status",
+       subtitle = "Dashed lines show average monthly charges for each group",
+       x = "Monthly Charges",
+       y = "Density",
+       fill = "Customer Status") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+print(MonthlyCharges_density_plot)
+
+print(avg_MonthlyCharges)
+```
+```{r}
+avg_TotalCharges <- telco_chrun_clean %>%
+  group_by(Churn) %>%
+  summarise(avg_TotalCharges = mean(TotalCharges))
+
+TotalCharges_density_plot <- ggplot(telco_chrun_clean, aes(x = TotalCharges, fill = Churn)) +
+  geom_density(alpha = 0.6, color = NA) +  
+  geom_vline(data = avg_TotalCharges, 
+             aes(xintercept = avg_TotalCharges, color = Churn), 
+             linetype = "dashed", size = 1, show.legend = FALSE) +  
+  geom_label(data = avg_TotalCharges,
+             aes(x = avg_TotalCharges, y = 0.02, 
+                 label = paste("Avg: $", round(avg_TotalCharges, 1)),  
+                 color = Churn),
+             fill = "white", alpha = 0.8, size = 3.5,
+             show.legend = FALSE) +  
+  scale_fill_manual(values = c("No" = "steelblue", "Yes" = "coral2"),
+                    labels = c("No" = "Retained", "Yes" = "Churned")) +
+  scale_color_manual(values = c("No" = "darkblue", "Yes" = "darkred")) +
+  labs(title = "Distribution of Customer's Total Charges by Churn Status (Logarithmic Scale)",
+       subtitle = "Dashed lines show average total charges for each group",
+       x = "Total Charges ($)",
+       y = "Density",
+       fill = "Customer Status") +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+TotalCharges_density_plot<- TotalCharges_density_plot +
+  scale_x_log10(labels = scales::dollar)
+
+TotalCharges_density_plot
+```
+Extreme Right-Skew:
+
+```{r}
+PaperlessBilling_results <- create_churn_plot("PaperlessBilling")
+PaperlessBilling_plot_data <- PaperlessBilling_results$plot_data
+PaperlessBilling_plot <- PaperlessBilling_results$plot
+
+PaperlessBilling_plot
+```
+
+```{r}
+PaymentMethod_plot_data <- telco_chrun_clean %>%
+  count(Churn, PaymentMethod) %>%
+  group_by(Churn) %>%  
+  mutate(percentage = n / sum(n)) %>%
+  ungroup()
+
+PaymentMethod_plot <- ggplot(PaymentMethod_plot_data, aes(x = factor(PaymentMethod), 
+                     y = percentage, 
+                     fill = factor(PaymentMethod))) +
+  geom_col(color = "black", show.legend = FALSE) +  
+  geom_text(aes(label = scales::percent(percentage, accuracy = 0.1)), 
+            vjust = -0.5, size = 4, fontface = "bold") +  
+  facet_wrap(~ factor(Churn, levels = c("Yes", "No"), 
+                     labels = c("Churned Customers", "Retained Customers")), 
+             nrow = 1) +  
+  scale_y_continuous(labels = scales::percent_format(), 
+                     limits = c(0, 1),  
+                     expand = expansion(mult = c(0, 0.1))) +  
+  scale_fill_manual(values = c("BankTransferAuto" = "lightblue", "CreditCardAuto" = "lightcoral", "ECheck" = "lightgreen", "MailedCheck" = "lightyellow")) +  
+  labs(
+       x = "Payment Method",
+       y = "Percentage of Group") +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold", size = 11))  
+
+PaymentMethod_plot
+```
+
+```{r}
+Contract_plot_data <- telco_chrun_clean %>%
+  count(Churn, Contract) %>%
+  group_by(Churn) %>%  
+  mutate(percentage = n / sum(n)) %>%
+  ungroup()
+
+Contract_plot <- ggplot(Contract_plot_data, aes(x = factor(Contract), 
+                     y = percentage, 
+                     fill = factor(Contract))) +
+  geom_col(color = "black", show.legend = FALSE) +  
+  geom_text(aes(label = scales::percent(percentage, accuracy = 0.1)), 
+            vjust = -0.5, size = 4, fontface = "bold") +  
+  facet_wrap(~ factor(Churn, levels = c("Yes", "No"), 
+                     labels = c("Churned Customers", "Retained Customers")), 
+             nrow = 1) +  
+  scale_y_continuous(labels = scales::percent_format(), 
+                     limits = c(0, 1),  
+                     expand = expansion(mult = c(0, 0.1))) +  
+  scale_fill_manual(values = c("Month-to-month" = "lightblue", "One year" = "lightcoral", "Two year" = "lightgreen")) +  
+  labs(
+       x = "Contract",
+       y = "Percentage of Group") +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold", size = 11)) 
+
+Contract_plot
+
+```
+
+##Plots for Report
+```{r}
+combined_analysis_account <- (MonthlyCharges_density_plot | TotalCharges_density_plot) /
+                             (tenure_density_plot)
+
+combined_analysis_account <- wrap_plots(
+  MonthlyCharges_density_plot,
+  TotalCharges_density_plot,
+  tenure_density_plot,
+  ncol = 2,  
+  nrow = 2   
+)
+
+combined_analysis_account
+
+```
+
+```{r}
+combined_analysis_account2 <- (Contract_plot | PaperlessBilling_plot) /
+                             (PaymentMethod_plot)
+
+combined_analysis_account2 <- wrap_plots(
+  Contract_plot,
+  PaperlessBilling_plot,
+  PaymentMethod_plot,
+  ncol = 2,  
+  nrow = 2   
+)
+
+combined_analysis_account2
+```
+
+
+#EDA for Service Information
+
+```{r}
+PhoneService_results <- create_churn_plot("PhoneService")
+PhoneService_plot_data <- PhoneService_results$plot_data
+PhoneService_plot <- PhoneService_results$plot
+
+PhoneService_plot
+```
+```{r}
+MultipleLines_results <- create_churn_plot("MultipleLines")
+MultipleLines_plot_data <- MultipleLines_results$plot_data
+MultipleLines_plot <- MultipleLines_results$plot
+MultipleLines_plot
+```
+```{r}
+InternetService_plot_data <- telco_chrun_clean %>%
+  count(Churn, InternetService) %>%
+  group_by(Churn) %>%  
+  mutate(percentage = n / sum(n)) %>%
+  ungroup()
+
+InternetService_plot <- ggplot(InternetService_plot_data, aes(x = factor(InternetService), 
+                     y = percentage, 
+                     fill = factor(InternetService))) +
+  geom_col(color = "black", show.legend = FALSE) +  
+  geom_text(aes(label = scales::percent(percentage, accuracy = 0.1)), 
+            vjust = -0.5, size = 4, fontface = "bold") + 
+  facet_wrap(~ factor(Churn, levels = c("Yes", "No"), 
+                     labels = c("Churned Customers", "Retained Customers")), 
+             nrow = 1) +  
+  scale_y_continuous(labels = scales::percent_format(), 
+                     limits = c(0, 1),  
+                     expand = expansion(mult = c(0, 0.1))) +  
+  scale_fill_manual(values = c("DSL" = "lightblue", "No" = "lightcoral", "FiberOptic" = "lightgreen")) +  
+  labs(
+       x = "Internet Service",
+       y = "Percentage of Group") +
+  theme_minimal() +
+  theme(strip.text = element_text(face = "bold", size = 11))  
+
+InternetService_plot
+```
+```{r}
+OnlineSecurity_results <- create_churn_plot("OnlineSecurity")
+OnlineSecurity_plot_data <- OnlineSecurity_results$plot_data
+OnlineSecurity_plot <- OnlineSecurity_results$plot
+
+OnlineSecurity_plot
+```
+```{r}
+OnlineBackup_results <- create_churn_plot("OnlineBackup")
+OnlineBackup_plot_data <- OnlineBackup_results$plot_data
+OnlineBackup_plot <- OnlineBackup_results$plot
+
+OnlineBackup_plot
+```
+```{r}
+DeviceProtection_results <- create_churn_plot("DeviceProtection")
+DeviceProtection_plot_data <- DeviceProtection_results$plot_data
+DeviceProtection_plot <- DeviceProtection_results$plot
+
+DeviceProtection_plot
+```
+```{r}
+TechSupport_results <- create_churn_plot("TechSupport")
+TechSupport_plot_data <- TechSupport_results$plot_data
+TechSupport_plot <- TechSupport_results$plot
+TechSupport_plot
+```
+```{r}
+StreamingTV_results <- create_churn_plot("StreamingTV")
+StreamingTV_plot_data <- StreamingTV_results$plot_data
+StreamingTV_plot <- StreamingTV_results$plot
+StreamingTV_plot
+```
+
+```{r}
+StreamingMovies_results <- create_churn_plot("StreamingMovies")
+StreamingMovies_plot_data <- StreamingMovies_results$plot_data
+StreamingMovies_plot <- StreamingMovies_results$plot
+StreamingMovies_plot
+```
+
+##Plots for Report
+```{r}
+combined_analysis_service <- (PhoneService_plot + MultipleLines_plot) / 
+                     (StreamingTV_plot + StreamingMovies_plot)
+
+combined_analysis_service + plot_annotation(
+  title = "Customer Service Analysis by Churn Status",
+  theme = theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+)
+```
+```{r}
+combined_analysis_service2 <- (DeviceProtection_plot + TechSupport_plot) / 
+                     (OnlineSecurity_plot + OnlineBackup_plot)
+
+combined_analysis_service2 + plot_annotation(
+  title = "Customer Service Analysis by Churn Status",
+  theme = theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+)
+```
+
+
+#Imbalanced Data Set addressed with Rose
+
+```{r}
+train_index <- createDataPartition(telco_chrun_clean$Churn, p = 0.8, list = FALSE)
+telco_train <- telco_chrun_clean[train_index, ]
+telco_test <- telco_chrun_clean[-train_index, ]
+
+train_balanced <- ROSE(Churn ~ ., data = telco_train, seed = 123)$data
+
+cat("Class distribution after ROSE:\n")
+print(table(train_balanced$Churn))
+
+x_train_balanced <- model.matrix(Churn ~ . -1, data = train_balanced)
+x_test <- model.matrix(Churn ~ . -1, data = telco_test)
+
+y_train_balanced <- train_balanced$Churn
+y_test <- telco_test$Churn
+```
+
+#Lasso Logisitic Regression Model 
+
+## Meeting the assumptions of the logisitc model
+
+### 1. Logistic regression assumes linearity of independent variables and log odds of the dependent variable. Although this analysis does not require the dependent and independent variables to be related linearly, it requires that the independent variables are linearly related to the log odds of the dependent variable.
+
+### 2. Logistic regression requires there to be little or no multicollinearity among the independent variables.  Meaning, that the independent variables should not be too highly correlated with each other.
+
+### 3. Binary logistic regression requires the dependent variable to be binary (which is true no code needed)
+
+### 4. Logistic regression requires the observations to be independent of each other. (which is true no code needed)
+
+### 5. Logistic regression typically requires a large sample size. (which is true no code needed)
+
+### 6. No Extreme Outliers
+
+## Addressing Assumption 6: No Extreme Outlier
+
+```{r}
+
+check_outliers <- function(data, continuous_vars) {
+  outlier_results <- list()
+  
+  for (var in continuous_vars) {
+    # Calculate summary statistics
+    var_data <- data[[var]]
+    q1 <- quantile(var_data, 0.25, na.rm = TRUE)
+    q3 <- quantile(var_data, 0.75, na.rm = TRUE)
+    iqr <- q3 - q1
+    lower_bound <- q1 - 1.5 * iqr
+    upper_bound <- q3 + 1.5 * iqr
+    
+    
+    outliers <- var_data[var_data < lower_bound | var_data > upper_bound]
+    outlier_count <- length(outliers)
+    outlier_percentage <- round((outlier_count / length(var_data)) * 100, 2)
+    
+p <- ggplot(data, aes(y = !!sym(var))) +
+     geom_boxplot(fill = "lightblue", color = "darkblue") +
+     labs(title = paste("Boxplot of", var),
+     y = var) +
+     theme_minimal()
+        
+    outlier_results[[var]] <- list(
+      plot = p,
+      stats = data.frame(
+        Variable = var,
+        Q1 = q1,
+        Q3 = q3,
+        IQR = iqr,
+        Lower_Bound = lower_bound,
+        Upper_Bound = upper_bound,
+        Outlier_Count = outlier_count,
+        Outlier_Percentage = outlier_percentage
+      )
+    )
+  }
+  
+  return(outlier_results)
+}
+
+continuous_vars <- c("tenure", "MonthlyCharges", "TotalCharges")
+outlier_analysis <- check_outliers(telco_chrun_clean, continuous_vars)
+
+
+for (var in continuous_vars) {
+  print(outlier_analysis[[var]]$stats)
+}
+```
+
+
+## Addressing Assumption 1: Determining the linearity of independent variables and log odds of the dependent variable.
+
+```{r}
+check_logit_linearity <- function(data, continuous_vars) {
+  plots <- list()
+  
+  for (var in continuous_vars) {
+    # Create bins for the continuous variable
+    data_binned <- data %>%
+      mutate(bin = cut(!!sym(var), breaks = 10, include.lowest = TRUE)) %>%
+      group_by(bin) %>%
+      summarise(
+        mean_var = mean(!!sym(var)),
+        churn_rate = mean(as.numeric(Churn) - 1),  # Convert to 0/1
+        log_odds = log((churn_rate + 0.001) / (1 - churn_rate + 0.001))  # Avoid log(0)
+      )
+    
+    # Create scatter plot
+    p <- ggplot(data_binned, aes(x = mean_var, y = log_odds)) +
+      geom_point(size = 3, color = "steelblue") +
+      geom_smooth(method = "lm", se = FALSE, color = "red") +
+      labs(title = paste("Linearity Check:", var),
+           x = var, y = "Log Odds of Churn") +
+      theme_minimal()
+    
+    plots[[var]] <- p
+  }
+  
+  return(plots)
+}
+
+# Check linearity for continuous variables
+continuous_vars <- c("tenure", "MonthlyCharges", "TotalCharges")
+linearity_plots <- check_logit_linearity(telco_chrun_clean, continuous_vars)
+
+# Display plots
+linearity_plots$tenure
+linearity_plots$MonthlyCharges
+linearity_plots$TotalCharges
+
+combined_linearity_plots <- (linearity_plots$TotalCharges + linearity_plots$MonthlyCharges + linearity_plots$tenure)
+
+combined_linearity_plots
+```
+
+### Turning Monthly Charges into a categorical variable 
+```{r}
+telco_chrun_clean_lr <- telco_chrun_clean %>%
+  mutate(
+    MonthlyCharges_cat = case_when(
+      MonthlyCharges < 35 ~ "Low",
+      MonthlyCharges >= 35 & MonthlyCharges < 65 ~ "Medium",
+      MonthlyCharges >= 65 & MonthlyCharges < 90 ~ "High", 
+      MonthlyCharges >= 90 ~ "Very High"
+    ),
+    MonthlyCharges_cat = factor(MonthlyCharges_cat, 
+                               levels = c("Low", "Medium", 
+                                         "High", "Very High"))
+  )
+
+monthly_charges_summary <- telco_chrun_clean_lr %>%
+  group_by(MonthlyCharges_cat) %>%
+  summarise(
+    n_customers = n(),
+    avg_monthly_charge = mean(MonthlyCharges),
+    churn_rate = mean(Churn == "Yes"),
+    .groups = 'drop'
+  ) %>%
+  mutate(
+    percent_total = n_customers / sum(n_customers),
+    churn_percent = scales::percent(churn_rate, accuracy = 0.1)
+  )
+
+print("Monthly Charges Category Summary:")
+print(monthly_charges_summary)
+
+distribution_plot <- ggplot(monthly_charges_summary, aes(x = MonthlyCharges_cat, y = n_customers, fill = MonthlyCharges_cat)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = scales::comma(n_customers)), vjust = -0.5, size = 4, fontface = "bold") +
+  labs(title = "Distribution of Customers by Monthly Charges Category",
+       x = "Monthly Charges Category", 
+       y = "Number of Customers") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+churn_plot <- ggplot(monthly_charges_summary, aes(x = MonthlyCharges_cat, y = churn_rate, fill = MonthlyCharges_cat)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = churn_percent), vjust = -0.5, size = 4, fontface = "bold") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.5)) +
+  labs(title = "Churn Rate by Monthly Charges Category",
+       x = "Monthly Charges Category", 
+       y = "Churn Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+distribution_plot
+churn_plot
+
+data_binned_cat <- telco_chrun_clean_lr %>%
+  group_by(MonthlyCharges_cat) %>%
+  summarise(
+    avg_charge = mean(MonthlyCharges),
+    churn_rate = mean(as.numeric(Churn) - 1),
+    log_odds = log((churn_rate + 0.001) / (1 - churn_rate + 0.001))
+  )
+
+cat_linearity_plot <- ggplot(data_binned_cat, aes(x = avg_charge, y = log_odds)) +
+  geom_point(size = 4, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
+  geom_text(aes(label = MonthlyCharges_cat), vjust = -1, size = 3.5) +
+  labs(title = "Linearity Check: Monthly Charges Categories vs Log Odds",
+       x = "Average Monthly Charge in Category", 
+       y = "Log Odds of Churn") +
+  theme_minimal()
+
+cat_linearity_plot
+
+telco_for_modeling <- telco_chrun_clean_lr %>%
+  mutate(MonthlyCharges_cat = as.factor(MonthlyCharges_cat))
+
+telco_for_modeling <- telco_chrun_clean_lr %>%
+  select(-MonthlyCharges)
+
+cat("Final dataset structure for modeling:\n")
+str(telco_for_modeling$MonthlyCharges_cat)
+table(telco_for_modeling$MonthlyCharges_cat)
+
+```
+
+## Lasso Variable Selection 
+
+```{r}
+set.seed(123)
+train_index <- createDataPartition(telco_for_modeling$Churn, p = 0.8, list = FALSE)
+telco_train <- telco_for_modeling[train_index, ]
+telco_test <- telco_for_modeling[-train_index, ]
+
+train_balanced <- ROSE(Churn ~ ., data = telco_train, seed = 1)$data
+
+cat("Class distribution after ROSE:\n")
+print(table(train_balanced$Churn))
+
+x_train <- model.matrix(Churn ~ . -1, data = train_balanced)
+y_train <- as.numeric(train_balanced$Churn) - 1  # Convert to 0/1
+
+x_test <- model.matrix(Churn ~ . -1, data = telco_test)
+y_test <- as.numeric(telco_test$Churn) - 1
+
+set.seed(123)
+cv_lasso <- cv.glmnet(x_train, y_train, 
+                     family = "binomial", 
+                     alpha = 1,  
+                     type.measure = "class",  
+                     nfolds = 10)  
+
+plot(cv_lasso, main = "LASSO Cross-Validation Results")
+
+lambda_min <- cv_lasso$lambda.min
+lambda_1se <- cv_lasso$lambda.1se
+
+cat("Minimum lambda:", round(lambda_min, 4), "\n")
+cat("1 SE lambda:", round(lambda_1se, 4), "\n")
+
+lasso_model <- glmnet(x_train, y_train, 
+                     family = "binomial", 
+                     alpha = 1, 
+                     lambda = lambda_1se)
+
+lasso_coef <- coef(lasso_model)
+print("LASSO Coefficients:")
+print(lasso_coef)
+
+selected_vars <- rownames(lasso_coef)[which(lasso_coef != 0)]
+selected_vars <- selected_vars[selected_vars != "(Intercept)"]
+cat("\nSelected variables by LASSO:", paste(selected_vars, collapse = ", "), "\n")
+
+selected_summary <- data.frame(
+  Variable = rownames(lasso_coef)[which(lasso_coef != 0)],
+  Coefficient = lasso_coef[which(lasso_coef != 0)],
+  Odds_Ratio = exp(lasso_coef[which(lasso_coef != 0)])
+)
+rownames(selected_summary) <- NULL
+
+print("Selected Variables with Coefficients and Odds Ratios:")
+print(selected_summary)
+
+```
+
+## Building Logistic Regression Model 
+
+```{r}
+
+
+final_model <- glm(Churn ~ tenure + Contract + InternetService + PaperlessBilling + PaymentMethod + SeniorCitizen + OnlineSecurity, 
+                  data = train_balanced, 
+                  family = "binomial")
+
+cat("\nFinal Model Summary:\n")
+summary(final_model)
+
+odds_ratios <- exp(coef(final_model))
+conf_int <- exp(confint(final_model))
+
+model_summary <- data.frame(
+  Variable = names(coef(final_model)),
+  Coefficient = coef(final_model),
+  Odds_Ratio = odds_ratios,
+  CI_Lower = conf_int[,1],
+  CI_Upper = conf_int[,2],
+  p_value = summary(final_model)$coefficients[,4]
+)
+
+print("Model Coefficients with Odds Ratios and Confidence Intervals:")
+print(model_summary, digits = 3)
+
+```
+
+## Addressing Assumption 2 by Checking Multicollinerity 
+
+```{r}
+vif_final <- vif(final_model)
+print("\nVariance Inflation Factors for Final Model:")
+print(vif_final)
+
+if (all(vif_final <= 5)) {
+  cat("✓ Multicollinearity issue resolved! All VIF values <= 5\n")
+} else {
+  high_vif_final <- names(vif_final[vif_final > 5])
+  cat("Warning: Some multicollinearity remains in:", paste(high_vif_final, collapse = ", "), "\n")
+}
+```
+
+
+## Model Evaluation 
+
+```{r}
+predictions_prob <- predict(final_model, newdata = telco_test, type = "response")
+predictions_class <- ifelse(predictions_prob > 0.5, 1, 0)
+
+conf_matrix <- table(Predicted = predictions_class, Actual = y_test)
+print("Confusion Matrix:")
+print(conf_matrix)
+
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+sensitivity <- conf_matrix[2,2] / sum(conf_matrix[,2])  
+specificity <- conf_matrix[1,1] / sum(conf_matrix[,1])  
+precision <- conf_matrix[2,2] / sum(conf_matrix[2,])
+f1_score <- 2 * (precision * sensitivity) / (precision + sensitivity)
+
+cat("\nModel Performance Metrics:\n")
+cat("Accuracy:", round(accuracy, 3), "\n")
+cat("Sensitivity (Recall):", round(sensitivity, 3), "\n")
+cat("Specificity:", round(specificity, 3), "\n")
+cat("Precision:", round(precision, 3), "\n")
+cat("F1 Score:", round(f1_score, 3), "\n")
+```
+
+
+# Random Forest 
+
+```{r}
+set.seed(123)
+
+train_index <- createDataPartition(telco_chrun_clean$Churn, p = 0.8, list = FALSE)
+telco_train <- telco_chrun_clean[train_index, ]
+telco_test <- telco_chrun_clean[-train_index, ]
+
+train_balanced <- ROSE(Churn ~ ., data = telco_train, seed = 123)$data
+
+cat("Class distribution after ROSE:\n")
+print(table(train_balanced$Churn))
+
+```
+
+## Variable Selection
+```{r}
+set.seed(123)
+rf_initial <- randomForest(Churn ~ ., 
+                          data = train_balanced, 
+                          ntree = 500,
+                          importance = TRUE,
+                          do.trace = 100)
+
+
+var_importance <- importance(rf_initial)
+var_importance_df <- data.frame(
+  Variable = rownames(var_importance),
+  Importance = var_importance[, "MeanDecreaseGini"]
+) %>%
+  arrange(desc(Importance))
+
+print("Top 15 Most Important Variables:")
+print(head(var_importance_df, 15))
+
+var_imp_plot <- ggplot(head(var_importance_df, 15), 
+                      aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  coord_flip() +
+  labs(title = "Random Forest - Variable Importance",
+       x = "Variable", 
+       y = "Mean Decrease in Gini") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+print(var_imp_plot)
+
+selected_vars_rf <- var_importance_df$Variable[1:10]  # Top 10 variables
+cat("\nSelected variables for final model:", paste(selected_vars_rf, collapse = ", "), "\n")
+```
+## Hypertuning Parameters
+
+```{r}
+
+cat("\n=== HYPERPARAMETER TUNING ===\n")
+
+tune_grid <- expand.grid(
+  mtry = c(2, 3, 4, 5, 6)          
+)
+
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  verboseIter = TRUE,
+  search = "grid"
+)
+
+formula_selected <- as.formula(paste("Churn ~", paste(selected_vars_rf, collapse = " + ")))
+
+set.seed(123)
+rf_tuned <- train(
+  formula_selected,
+  data = train_balanced,
+  method = "rf",
+  metric = "ROC",
+  trControl = ctrl,
+  tuneGrid = tune_grid,
+  ntree = 500,  
+  importance = TRUE
+)
+
+cat("Best tuning parameters:\n")
+print(rf_tuned$bestTune)
+
+plot(rf_tuned, main = "Random Forest Tuning Results")
+
+```
+## Building the Model 
+
+```{r}
+cat("\n=== FINAL RANDOM FOREST MODEL ===\n")
+
+final_rf <- randomForest(
+  formula_selected,
+  data = train_balanced,
+  mtry = rf_tuned$bestTune$mtry,
+  nodesize = rf_tuned$bestTune$nodesize,
+  importance = TRUE
+)
+
+cat("Final Random Forest Model Summary:\n")
+print(final_rf)
+
+```
+
+## Model Evaluation
+```{r}
+cat("\n=== MODEL EVALUATION ===\n")
+
+predictions_prob <- predict(final_rf, newdata = telco_test, type = "prob")[, "Yes"]
+predictions_class <- predict(final_rf, newdata = telco_test, type = "response")
+
+y_test_numeric <- ifelse(telco_test$Churn == "Yes", 1, 0)
+pred_class_numeric <- ifelse(predictions_class == "Yes", 1, 0)
+
+conf_matrix <- table(Predicted = pred_class_numeric, Actual = y_test_numeric)
+print("Confusion Matrix:")
+print(conf_matrix)
+
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+sensitivity <- conf_matrix[2,2] / sum(conf_matrix[,2])  
+specificity <- conf_matrix[1,1] / sum(conf_matrix[,1])  
+precision <- conf_matrix[2,2] / sum(conf_matrix[2,])
+f1_score <- 2 * (precision * sensitivity) / (precision + sensitivity)
+
+roc_obj <- roc(y_test_numeric, predictions_prob)
+auc_score <- auc(roc_obj)
+
+cat("\nModel Performance Metrics:\n")
+cat("Accuracy:", round(accuracy, 3), "\n")
+cat("Sensitivity (Recall):", round(sensitivity, 3), "\n")
+cat("Specificity:", round(specificity, 3), "\n")
+cat("Precision:", round(precision, 3), "\n")
+cat("F1 Score:", round(f1_score, 3), "\n")
+cat("AUC:", round(auc_score, 3), "\n")
+
+plot(roc_obj, main = paste("ROC Curve (AUC =", round(auc_score, 3), ")"),
+     col = "blue", lwd = 2)
+```
+```
+
+
+
