@@ -11,12 +11,12 @@ The analysis compares two machine learning models:
 ## 📁 Repository Structure
 
 - Data/  
-  - `telco_churn_data.csv` — Raw dataset (from Kaggle)  
+  - `Telco Customer Churn Dataset.csv` — Raw dataset (from Kaggle)  
 - Code/  
-  - `Telco_Churn_Analysis.R` — Main R script for data cleaning, EDA, and modeling  
-  - `Telco_Churn_Analysis.Rmd` — R Markdown report with visualizations  
-- Output/  
-  - `Predicting_Customer_Churn.pdf` — Final report with analysis, visualizations, and conclusions  
+  - `R-Code Output` — Rmd File Knitted into a pdf  
+  - `Telco Churn Analysis.Rmd` — R Markdown report with visualizations  
+- Report/  
+  - `Predicting Customer Churn.pdf` — Final report with analysis, visualizations, and conclusions  
 - README.md — This file  
 
 ## 🎯 Key Objectives
