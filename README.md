@@ -59,4 +59,47 @@ install.packages(c(
 ))
 ```
 
+## 📊 Dataset
+
+- **Source:** IBM Telco Customer Churn Dataset on Kaggle  
+- **Link:** [https://www.kaggle.com/datasets/blastchar/telco-customer-churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)  
+- **Description:** The dataset contains 7,043 customer records with 21 attributes, including demographic information, account details, and services subscribed. The target variable is **Churn**, indicating whether the customer left the company.  
+
+## 📈 Key Findings & Business Implications
+
+The analysis revealed that the most significant drivers of churn are:  
+- **Low Tenure:** New customers are at the highest risk.  
+- **Contract Type:** Month-to-month contracts have significantly higher churn rates.  
+- **Internet Service:** Fiber optic customers are more likely to churn, potentially due to cost or competition.  
+- **Payment Method:** Paying by electronic check is associated with higher churn.  
+- **Lack of Add-on Services:** Customers without online security, tech support, backup, or device protection are more likely to leave.  
+
+### Recommended Business Actions
+- Incentivize long-term contracts for month-to-month customers.  
+- Proactively engage with high-risk segments (e.g., fiber optic users, electronic check payers).  
+- Improve service value by bundling essential add-ons.  
+- Use the Random Forest model to generate a target list for retention campaigns.  
+
+## 📝 Model Performance Summary
+
+| Model                    | Accuracy | Sensitivity (Recall) | Precision | AUC  |
+|---------------------------|----------|----------------------|-----------|------|
+| LASSO Logistic Regression | 0.74     | 0.79                 | 0.51      | -    |
+| Random Forest             | 0.69     | 0.86                 | 0.45      | 0.82 |
+
+- **Random Forest** is recommended for *proactive identification* of likely churners due to its higher recall.  
+- **Logistic Regression** is best for *understanding the key drivers* behind churn.  
+
+## ⚠️ Limitations & Future Work
+
+- **Data Limitations:** The dataset is a single snapshot in time; lacks service history or support interactions.  
+- **Causality:** Models identify correlations, not causation.  
+- **Class Imbalance:** Churn is a rare event, limiting precision.  
+
+### Future Work
+- Incorporate temporal data and customer service interactions.  
+- Test advanced models like **Gradient Boosting Machines (XGBoost)** for improved performance.  
+
+
+
 
