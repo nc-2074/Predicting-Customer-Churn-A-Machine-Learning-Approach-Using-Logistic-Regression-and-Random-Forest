@@ -1,6 +1,6 @@
 # Predicting Customer Churn A Machine Learning Approach Using Logistic Regression and Random Forest
 
-## 📖 Project Overview
+## Project Overview
 
 This project was made with the goal of predicting customer churn for a telecom company (Telco) using machine learning. Customer churn is a critical business problem, because getting new customers is more expensive than retaining existing ones. By analyzing customer data, this project identifies key factors influencing churn and builds predictive models to flag at-risk customers, which can be used to inform proactive retention strategies.
 
@@ -8,7 +8,7 @@ The analysis compares two machine learning models:
 1.  **LASSO Logistic Regression** 
 2.  **Random Forest** 
 
-## 📁 Repository Structure
+## Repository Structure
 
 - Data/  
   - `Telco Customer Churn Dataset.csv` — Raw dataset (from Kaggle)  
@@ -19,13 +19,13 @@ The analysis compares two machine learning models:
   - `Predicting Customer Churn.pdf` — Final report with analysis, visualizations, and conclusions  
 - README.md — This file  
 
-## 🎯 Key Objectives
+## Key Objectives
 
 1.  **Predict Churn:** Build a classification model to accurately predict if a customer will churn.
 2.  **Compare Models:** Evaluate and compare the performance of Logistic Regression and Random Forest models.
 3.  **Identify Drivers:** Uncover the most important factors leading to customer churn to inform business strategy.
 
-## 🔧 Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 
@@ -53,13 +53,13 @@ install.packages(c(
 ))
 ```
 
-## 📊 Dataset
+## Dataset
 
 - **Source:** IBM Telco Customer Churn Dataset on Kaggle  
 - **Link:** [https://www.kaggle.com/datasets/blastchar/telco-customer-churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)  
 - **Description:** The dataset contains 7,043 customer records with 21 attributes, including demographic information, account details, and services subscribed. The target variable is **Churn**, indicating whether the customer left the company.  
 
-## 📈 Key Findings & Business Implications
+## Key Findings & Business Implications
 
 The analysis revealed that the most significant drivers of churn are:  
 - **Low Tenure:** New customers are at the highest risk.  
@@ -74,7 +74,7 @@ The analysis revealed that the most significant drivers of churn are:
 - Improve service value by bundling essential add-ons.  
 - Use the Random Forest model to generate a target list for retention campaigns.  
 
-## 📝 Model Performance Summary
+## Model Performance Summary
 
 | Model                    | Accuracy | Sensitivity (Recall) | Precision | AUC  |
 |---------------------------|----------|----------------------|-----------|------|
@@ -84,7 +84,7 @@ The analysis revealed that the most significant drivers of churn are:
 - **Random Forest** is recommended for *proactive identification* of likely churners due to its higher recall.  
 - **Logistic Regression** is best for *understanding the key drivers* behind churn.  
 
-## ⚠️ Limitations & Future Work
+## Limitations & Future Work
 
 - **Data Limitations:** The dataset is a single snapshot in time; lacks service history or support interactions.  
 - **Causality:** Models identify correlations, not causation.  
