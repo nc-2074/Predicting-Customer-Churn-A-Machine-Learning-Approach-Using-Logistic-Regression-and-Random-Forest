@@ -1,3 +1,4 @@
+*.Rmd linguist-language=R
 ---
 title: "Telco Predicting Customer Churn"
 author: "Nicole"
