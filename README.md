@@ -2,6 +2,21 @@
 
 ## Project Overview
 
+![R](https://img.shields.io/badge/R-276DC3?style=for-the-badge&logo=r&logoColor=white)
+![RStudio](https://img.shields.io/badge/RStudio-75AADB?style=for-the-badge&logo=rstudio&logoColor=white)
+![Tidyverse](https://img.shields.io/badge/Tidyverse-1A162D?style=for-the-badge&logo=tidyverse&logoColor=white)
+![ggplot2](https://img.shields.io/badge/ggplot2-5C0C0C?style=for-the-badge)
+![caret](https://img.shields.io/badge/caret-1F78D3?style=for-the-badge)
+![randomForest](https://img.shields.io/badge/randomForest-0D7029?style=for-the-badge)
+![pROC](https://img.shields.io/badge/pROC-3B99CD?style=for-the-badge)
+![patchwork](https://img.shields.io/badge/patchwork-5C0C0C?style=for-the-badge)
+
+<!-- Text-based badges for packages without common logos -->
+![glmnet](https://img.shields.io/badge/glmnet-8C0D73?style=for-the-badge)
+![ROSE](https://img.shields.io/badge/ROSE-C7245A?style=for-the-badge)
+![scales](https://img.shields.io/badge/scales-2F6C9C?style=for-the-badge)
+![car](https://img.shields.io/badge/car-9D442D?style=for-the-badge)
+
 This project was made with the goal of predicting customer churn for a telecom company (Telco) using machine learning. Customer churn is a critical business problem, because getting new customers is more expensive than retaining existing ones. By analyzing customer data, this project identifies key factors influencing churn and builds predictive models to flag at-risk customers, which can be used to inform proactive retention strategies.
 
 The analysis compares two machine learning models:
