@@ -1,4 +1,4 @@
-# Predicting Customer Churn A Machine Learning Approach Using Logistic Regression and Random Forest
+# Predicting Customer Churn: A Machine Learning Approach Using Logistic Regression and Random Forest
 
 ## Project Overview
 
