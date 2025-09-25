@@ -25,14 +25,19 @@ The analysis compares two machine learning models:
 
 ## Repository Structure
 
-- Data/  
-  - `Telco Customer Churn Dataset.csv` — Raw dataset (from Kaggle)  
-- Code/  
-  - `R-Code Output` — Rmd File Knitted into a pdf  
-  - `Telco Churn Analysis.Rmd` — R Markdown report with visualizations  
-- Report/  
-  - `Predicting Customer Churn.pdf` — Final report with analysis, visualizations, and conclusions  
-- README.md — This file  
+Predicting Customer Churn: A Machine Learning Approach Using Logistic Regression and Random Forest/
+│
+├── Data/
+│ └── Telco Customer Churn Dataset.csv # Raw dataset (from Kaggle)
+│
+├── Code/
+│ ├── Telco Churn Analysis.Rmd # R Markdown report with visualizations
+│ └── R-Code Output # Rmd File Knitted into a PDF
+│
+├── Report/
+│ └── Predicting Customer Churn.pdf # Final report with analysis, visualizations, and conclusions
+│
+└── README.md 
 
 ## Key Objectives
 
