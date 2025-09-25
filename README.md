@@ -25,6 +25,7 @@ The analysis compares two machine learning models:
 
 ## Repository Structure
 
+```text
 Predicting Customer Churn: A Machine Learning Approach Using Logistic Regression and Random Forest/
 │
 ├── Data/
@@ -38,6 +39,7 @@ Predicting Customer Churn: A Machine Learning Approach Using Logistic Regression
 │ └── Predicting Customer Churn.pdf # Final report with analysis, visualizations, and conclusions
 │
 └── README.md 
+```
 
 ## Key Objectives
 
